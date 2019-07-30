@@ -124,9 +124,17 @@ int main() {
 
               check_car_s + ((double)prev_size * 0.02 * check_speed);
               if ((check_car_s > car_s) && ((check_car_s - car_s) < 30)){
-                ref_vel = 29.5;
+                // ref_vel = 29.5;
+                too_close = true;
               }
             }
+          }
+
+          if (too_close){
+            ref_vel -= 0.224; //5 meters/sec^2
+          }
+          else if (ref_vel < 49.5){
+            ref_vel += 0.224;
           }
 
           if (prev_size < 2){
