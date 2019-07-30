@@ -51,6 +51,9 @@ int main() {
     map_waypoints_dy.push_back(d_y);
   }
 
+  static int lane = 1;
+  static double ref_vel = 49.5;
+
   h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,
                &map_waypoints_dx,&map_waypoints_dy]
               (uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
@@ -98,9 +101,6 @@ int main() {
            *   sequentially every .02 seconds
            */
 
-          static int lane = 1;
-          static double ref_vel = 49.5;
-
           vector<double> ptsx;
           vector<double> ptsy;
 
@@ -127,10 +127,10 @@ int main() {
             ref_yaw = atan2(ref_y - ref_y_prev, ref_x - ref_x_prev);
 
             ptsx.push_back(ref_x_prev);
-            ptsx.push_back(car_x);
+            ptsx.push_back(ref_x);
 
             ptsy.push_back(ref_y_prev);
-            ptsy.push_back(car_y);
+            ptsy.push_back(ref_y);
           }
 
           for (size_t d = 1; d < 3; ++d){
@@ -138,6 +138,18 @@ int main() {
             ptsx.push_back(next_wp[0]);
             ptsy.push_back(next_wp[1]);
           }
+
+          // vector<double> next_wp0 = getXY(car_s+30, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+          // vector<double> next_wp1 = getXY(car_s+60, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+          // vector<double> next_wp2 = getXY(car_s+90, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+
+          // ptsx.push_back(next_wp0[0]);
+          // ptsx.push_back(next_wp1[0]);
+          // ptsx.push_back(next_wp2[0]);
+
+          // ptsy.push_back(next_wp0[1]);
+          // ptsy.push_back(next_wp1[1]);
+          // ptsy.push_back(next_wp2[1]);
 
           for (size_t i = 0; i < ptsx.size(); ++i){
             double shift_x = ptsx[i]-ref_x;
