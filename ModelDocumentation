@@ -1,0 +1,26 @@
+There are several parts of the model, each are responsible for a different function within the driving of the vehicle
+. 
+
+First is vehicle positioning - ensuring that our vehicle stays far enough back from the car in front, as well as not
+hitting a vehicle to the left or right lanes when it decides to make a lane change. This is done by first looping thr
+ough all detected vehicles to determine the vehicle which is directly in front of our vehicle. It must be in the same
+ lane, ahead of our vehicle, and within 30m. If this is the case, the too_close flag is set, which triggers either sl
+owing down or initiating a lane change. Since we want to maintain the fastest speed, a lane change is more desireable
+ than slowing in the same lane. Therefore, the adjacent lanes are checked for an open spot. To do so, all detected ve
+hicles are checked and sorted into vehicles in the lane to the left and vehicles in the lane to the right. I've decid
+ed to prioritize a left lane change over a right lane change, so the vehicles in the left lane are checked first. If
+there are no cars within 30m in front or behind the s position of our car,  If so, the lane variable is changed to th
+e lane to the left. If this is not possible, then the right lane is checked for an opening. If so, the lane variable
+is changed to the lane to the right. If this is also not possible, the lane is not changed. 
+
+Next, the vehicle speed is adjusted. If it's been determined that our vehicle is too close to the vehicle ahead, then
+ the reference velocity is decreased by ~5m/s^2. Otherwise, if the speed is less than our desired speed of 49.5m/s, t
+hen the reference velocity is increased by ~5m/s^2.
+
+Next, we need to generate the missing points in the path to go out 30m in front of our vehicle. If the size of the path is less than 2 points, then the first two are filled out with the last point and the current point of the coarse lane points. Otherwise, the first two points are filled out based on the previous path. Next, three more points are added along the coarse lane centerline for 90 meters. Next the points are shifted to be in the frame of the vehicle.
+
+Next, a spline is generated using the coarse path, and then x and y values are generated from the spline to 30 meters out. points along this spline are added to the end of the current smooth path, making the total length 50 points.
+
+This smooth path is passed to the vehicle to follow.
+
+
