@@ -114,8 +114,11 @@ int main() {
 
           bool too_close = false;
 
+          // Decide lane change or slow down in lane
           for (size_t i = 0; i < sensor_fusion.size(); ++i){
             float d = sensor_fusion[i][6];
+
+            // Get vehicle in current lane
             if (d < (2+4*lane+2) && d > (2+4*lane-2)){
               double vx = sensor_fusion[i][3];
               double vy = sensor_fusion[i][4];
@@ -123,11 +126,13 @@ int main() {
               double check_car_s = sensor_fusion[i][5];
 
               check_car_s += ((double)prev_size * 0.02 * check_speed);
+              
+              // If vehicle is the next vehicle ahead of ours
               if ((check_car_s > car_s) && ((check_car_s - car_s) < 30)){
                 too_close = true;
                 vector<float> left_vehicle_s, right_vehicle_s;
 
-                // Get other vehicles s
+                // Get other vehicles s and sort into left and right lanes
                 for (size_t j = 0; j < sensor_fusion.size(); ++j){
                   float other_vehicle_d = sensor_fusion[j][6];
                   if (other_vehicle_d <= (2+4*lane-2) && other_vehicle_d >= (2+4*lane-6)){
@@ -138,17 +143,19 @@ int main() {
                   }
                 }
 
-                int lane_change = -1;
+                int lane_change = -1; //default to left lane change
 
                 // Check for space in the left lane
                 if (lane > 0){
                   for (auto lvs : left_vehicle_s){
                     if (lvs < car_s + 30 && lvs > car_s - 30){
+                      //if any vehicle is in the safe pocket, adjust to right lane change
                       lane_change = 1;
                     }
                   }
                 }
                 else{
+                  // If in the leftmost lane, adjust to right lane change
                   lane_change = 1;
                 }
 
@@ -156,12 +163,16 @@ int main() {
                 if (lane < 2 && lane_change == 1){
                   for (auto rvs : right_vehicle_s){
                     if (rvs < car_s + 30 && rvs > car_s - 30){
+                      // if any vehicle is in the safe pocket, adjust to no lane change
                       lane_change = 0;
                     }
                   }
                 }
 
+                // adjust lane
                 lane += lane_change;
+
+                // adjust is lane is out of bounds
                 if (lane < 0){
                   lane = 0;
                 }
@@ -172,13 +183,17 @@ int main() {
             }
           }
 
+          // slow down if too close to the vehicle ahead
           if (too_close){
             ref_vel -= 0.224; //5 meters/sec^2
           }
+
+          // speed up if no vehicle within 30m and still under the allowed speed
           else if (ref_vel < 49.5){
             ref_vel += 0.224;
           }
 
+          // get coarse path
           if (prev_size < 2){
             double prev_car_x = car_x - cos(car_yaw);
             double prev_car_y = car_y - sin(car_yaw);
@@ -203,13 +218,13 @@ int main() {
             ptsy.push_back(ref_y_prev);
             ptsy.push_back(ref_y);
           }
-
           for (size_t d = 1; d < 3; ++d){
             vector<double> next_wp = getXY(car_s+(d*30), 2+4*lane, map_waypoints_s, map_waypoints_x, map_waypoints_y);
             ptsx.push_back(next_wp[0]);
             ptsy.push_back(next_wp[1]);
           }
 
+          // shift path to vehicle frame
           for (size_t i = 0; i < ptsx.size(); ++i){
             double shift_x = ptsx[i]-ref_x;
             double shift_y = ptsy[i]-ref_y;
@@ -218,6 +233,7 @@ int main() {
             ptsy[i] = (shift_x*sin(0-ref_yaw)+shift_y*cos(0-ref_yaw));
           }
 
+          // Generate spline
           tk::spline s;
           s.set_points(ptsx, ptsy);
 
@@ -234,6 +250,7 @@ int main() {
 
           double x_add_on = 0;
 
+          // Fill out missing points from spline to make 50 points in the smooth path
           for (size_t i = 1; i <= 50-previous_path_x.size(); ++i){
             double N = (target_dist/(0.02*ref_vel/2.24/*mph->meters/sec*/));
             double x_point = x_add_on+target_x/N;
