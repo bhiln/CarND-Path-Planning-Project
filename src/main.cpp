@@ -122,10 +122,52 @@ int main() {
               double check_speed = sqrt(vx*vx+vy*vy);
               double check_car_s = sensor_fusion[i][5];
 
-              check_car_s + ((double)prev_size * 0.02 * check_speed);
+              check_car_s += ((double)prev_size * 0.02 * check_speed);
               if ((check_car_s > car_s) && ((check_car_s - car_s) < 30)){
-                // ref_vel = 29.5;
                 too_close = true;
+                vector<float> left_vehicle_s, right_vehicle_s;
+
+                // Get other vehicles s
+                for (size_t j = 0; j < sensor_fusion.size(); ++j){
+                  float other_vehicle_d = sensor_fusion[j][6];
+                  if (other_vehicle_d <= (2+4*lane-2) && other_vehicle_d >= (2+4*lane-6)){
+                    left_vehicle_s.push_back(sensor_fusion[j][5]);
+                  }
+                  else if (other_vehicle_d >= (2+4*lane+2) && other_vehicle_d <= (2+4*lane+6)){
+                    right_vehicle_s.push_back(sensor_fusion[j][5]);
+                  }
+                }
+
+                int lane_change = -1;
+
+                // Check for space in the left lane
+                if (lane > 0){
+                  for (auto lvs : left_vehicle_s){
+                    if (lvs < car_s + 30 && lvs > car_s - 30){
+                      lane_change = 1;
+                    }
+                  }
+                }
+                else{
+                  lane_change = 1;
+                }
+
+                // Left lane change was not available, check right lane
+                if (lane < 2 && lane_change == 1){
+                  for (auto rvs : right_vehicle_s){
+                    if (rvs < car_s + 30 && rvs > car_s - 30){
+                      lane_change = 0;
+                    }
+                  }
+                }
+
+                lane += lane_change;
+                if (lane < 0){
+                  lane = 0;
+                }
+                else if (lane > 2){
+                  lane = 2;
+                }
               }
             }
           }
@@ -167,18 +209,6 @@ int main() {
             ptsx.push_back(next_wp[0]);
             ptsy.push_back(next_wp[1]);
           }
-
-          // vector<double> next_wp0 = getXY(car_s+30, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
-          // vector<double> next_wp1 = getXY(car_s+60, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
-          // vector<double> next_wp2 = getXY(car_s+90, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
-
-          // ptsx.push_back(next_wp0[0]);
-          // ptsx.push_back(next_wp1[0]);
-          // ptsx.push_back(next_wp2[0]);
-
-          // ptsy.push_back(next_wp0[1]);
-          // ptsy.push_back(next_wp1[1]);
-          // ptsy.push_back(next_wp2[1]);
 
           for (size_t i = 0; i < ptsx.size(); ++i){
             double shift_x = ptsx[i]-ref_x;
